@@ -1,6 +1,7 @@
 package com.zzc;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -67,17 +68,30 @@ public class DistributedLock implements Watcher {
 	 * @throws InterruptedException
 	 */
 	public void applyLock() throws KeeperException, InterruptedException{
-		Thread.sleep(this.sleepTime);
+		//为了测试锁顺序
+		Thread.sleep(10000-this.sleepTime);
 		
 		//添加一个节点
 		this.myLock = this.zk.create(this.distributedLockNodePath+"/"+this.nodeName, null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 		System.out.printf("%s 添加节点:%s\n", this.num,myLock);
 		
+		//为了测试锁的顺序!!!!!,统一休眠10秒
+		Thread.sleep(this.sleepTime);
+		
 		//获取子节点列表,并判断当前申请节点是否为最小节点
 		List<String> children = this.zk.getChildren(this.distributedLockNodePath, false);
 		
 		//有序字节点列表
-		SortedSet<String> sortedChildren = new TreeSet<>();
+		SortedSet<String> sortedChildren = new TreeSet<>(new Comparator<String>() {
+
+			@Override
+			public int compare(String o1, String o2) {
+				String[] o1s = o1.split("\\-");
+				String[] o2s = o2.split("\\-");
+				return Integer.valueOf(o1s[2])-Integer.valueOf(o2s[2]);
+			}
+			
+		});
 		for(String temp : children){
 			sortedChildren.add(this.distributedLockNodePath+"/"+temp);
 		}
@@ -132,7 +146,16 @@ public class DistributedLock implements Watcher {
 				
 				List<String> children = this.zk.getChildren(this.distributedLockNodePath, false);
 				//有序字节点列表
-				SortedSet<String> sortedChildren = new TreeSet<>();
+				SortedSet<String> sortedChildren = new TreeSet<>(new Comparator<String>() {
+
+					@Override
+					public int compare(String o1, String o2) {
+						String[] o1s = o1.split("\\-");
+						String[] o2s = o2.split("\\-");
+						return Integer.valueOf(o1s[2])-Integer.valueOf(o2s[2]);
+					}
+					
+				});
 				for(String temp : children){
 					sortedChildren.add(this.distributedLockNodePath+"/"+temp);
 				}
